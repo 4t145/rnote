@@ -1,5 +1,7 @@
 use bevy::input::common_conditions::*;
 use bevy::{input::mouse::MouseWheel, prelude::*};
+
+use crate::tools::{Tool, ToolBox};
 #[derive(Component)]
 struct Global2DCamera;
 const CAMARA_INITIAL_TRANSFORM: Transform = Transform::from_xyz(0.0, 0.0, 100.0);
@@ -14,12 +16,7 @@ impl Plugin for CameraPlugin {
         app.add_systems(Startup, setup);
         app.add_systems(
             Update,
-            (
-                zoom_scale,
-                handle_drag.run_if(
-                    input_pressed(MouseButton::Middle).or_else(input_pressed(MouseButton::Left)),
-                ),
-            ),
+            (zoom_scale, handle_drag.run_if(camera_control_condition)),
         );
     }
 }
@@ -32,6 +29,20 @@ pub fn setup(mut commands: Commands) {
         },
         Global2DCamera,
     ));
+}
+
+fn camera_control_condition(
+    tool_box: Res<ToolBox>,
+    kbd_input: Res<ButtonInput<MouseButton>>,
+) -> bool {
+    if !kbd_input.any_pressed([MouseButton::Middle, MouseButton::Left]) {
+        return false;
+    }
+    match tool_box.current_tool() {
+        Some(Tool::Picker(p)) => !p.picked(),
+        None => true,
+        _ => false,
+    }
 }
 
 fn handle_drag(
