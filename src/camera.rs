@@ -3,7 +3,7 @@ use bevy::{input::mouse::MouseWheel, prelude::*};
 
 use crate::tools::{Tool, ToolBox};
 #[derive(Component)]
-struct Global2DCamera;
+pub struct Global2DCamera;
 const CAMARA_INITIAL_TRANSFORM: Transform = Transform::from_xyz(0.0, 0.0, 100.0);
 const CAMERA_ZOOM_LINE_SPEED: f32 = 0.1;
 const CAMERA_ZOOM_PIXEL_SPEED: f32 = 0.001;

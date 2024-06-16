@@ -15,7 +15,8 @@ pub fn setup_board(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    let mesh = Mesh::from(shape::Quad::new(Vec2::new(100.0, 100.0)));
+    // let mesh = Mesh::from(bevy::math::prelude::Rectangle::new(100.0, 100.0));
+    let mesh = Mesh::from(bevy::math::prelude::Circle::new(500.0));
     let mesh_handle = meshes.add(mesh);
 
     let material = materials.add(Color::ANTIQUE_WHITE);
