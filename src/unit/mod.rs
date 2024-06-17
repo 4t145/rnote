@@ -1,12 +1,18 @@
 use bevy::prelude::*;
 mod stroke;
 #[derive(Component)]
-pub struct Unit;
+pub struct Unit {
+    layer: u32,
+}
 
 #[derive(Component)]
 pub struct Active;
 #[derive(Component)]
 pub struct Rendered;
+
+
+#[derive(Component)]
+pub struct Layer(u32);
 pub struct UnitPlugin;
 
 impl Plugin for UnitPlugin {

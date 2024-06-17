@@ -58,6 +58,12 @@ impl ToolBox {
         }
         self.tools.get(self.current_tool_index)
     }
+    pub fn current_tool_mut(&mut self) -> Option<&mut Tool> {
+        if self.tools.is_empty() {
+            return None;
+        }
+        self.tools.get_mut(self.current_tool_index)
+    }
 }
 
 

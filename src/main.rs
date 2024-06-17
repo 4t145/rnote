@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 
@@ -5,14 +6,14 @@ mod board;
 mod camera;
 mod debug;
 mod mouse;
+mod time;
 mod tools;
 mod unit;
 
 
 fn main() {
     let mut app = App::new();
-    app
-        .add_plugins(DefaultPlugins);
+    app.add_plugins(DefaultPlugins);
     #[cfg(debug_assertions)] // debug/dev builds only
     {
         use bevy::diagnostic::LogDiagnosticsPlugin;
@@ -23,6 +24,8 @@ fn main() {
         .add_plugins(camera::CameraPlugin)
         .add_plugins(debug::DebugPlugin)
         .add_plugins(board::BoardPlugin);
-        
+
     app.run();
 }
+
+
