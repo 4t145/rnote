@@ -2,6 +2,7 @@ use bevy::{
     input::{mouse::MouseButtonInput, ButtonState},
     math,
     prelude::*,
+    window::PrimaryWindow,
 };
 
 use crate::{
@@ -29,16 +30,13 @@ impl StrokeGroup {
     pub fn new() -> Self {
         Self::default()
     }
-
 }
 
 #[derive(Debug, Default)]
 pub struct Stroke {
     pub measurements: Vec<PointMeasurement>,
 }
-impl Stroke {
-
-}
+impl Stroke {}
 #[derive(Debug)]
 pub struct PointMeasurement {
     pub point: Vec2,
@@ -60,7 +58,8 @@ pub fn stroke_record_system(
     mouse_button: Res<ButtonInput<MouseButton>>,
     tool_box: Res<ToolBox>,
     mut cursor_moved_events: EventReader<CursorMoved>,
-    mut stroke_query: Query<
+    mut q_window: Query<&Window, With<PrimaryWindow>>,
+    mut q_stroke: Query<
         (
             Entity,
             &mut StrokeGroup,
@@ -70,22 +69,23 @@ pub fn stroke_record_system(
         ),
         With<Active>,
     >,
-    board: Query<(Entity, &GlobalTransform), With<Board>>,
-    camera: Query<(&Camera, &GlobalTransform), With<Global2DCamera>>,
+    q_board: Query<(Entity, &GlobalTransform), With<Board>>,
+    q_camera: Query<(&Camera, &GlobalTransform), With<Global2DCamera>>,
 ) {
-    let (board_entity, board_gt) = board.single();
-    let (camera, camera_gt) = camera.single();
+    let (board_entity, board_gt) = q_board.single();
+    let (camera, camera_gt) = q_camera.single();
     let Some(Tool::Brush {}) = tool_box.current_tool() else {
         return;
     };
     // 1. how many active strokes are there?
-    let mut active_strokes = stroke_query.iter_mut().collect::<Vec<_>>();
+    let mut active_strokes = q_stroke.iter_mut().collect::<Vec<_>>();
     // 1.1 if there is no active stroke, and the left mouse button is just pressed, create a new stroke
     if active_strokes.is_empty() && mouse_button.just_pressed(MouseButton::Left) {
         info!("creating_stroke_group start");
         let translation = board_gt.translation();
-        if let Some(last_moved) = cursor_moved_events.read().last() {
-            let Some(world_p) = camera.viewport_to_world_2d(camera_gt, last_moved.position) else {
+        let window = q_window.single();
+        if let Some(cursor_position) = window.cursor_position() {
+            let Some(world_p) = camera.viewport_to_world_2d(camera_gt, cursor_position) else {
                 warn!("creating_stroke failed, no world point found");
                 return;
             };
@@ -98,9 +98,7 @@ pub fn stroke_record_system(
                 .spawn((
                     StrokeGroup::new(),
                     Active,
-                    Unit {
-                        layer: 0,
-                    },
+                    Unit { layer: 0 },
                     Region::from_point(Vec2::default()),
                     LastUpdate::now(),
                     SpatialBundle {
@@ -121,14 +119,10 @@ pub fn stroke_record_system(
                 );
                 commands.entity(id).remove::<Active>();
             }
-        } else {
-            warn!("creating_stroke failed, no cursor moved event found");
         }
     } else if active_strokes.len() == 1 {
-        info!("creating_stroke continue");
         let (id, mut stroke_group, mut last_update, mut region, gt) = active_strokes.pop().unwrap();
         const STICKY_DURATION: std::time::Duration = std::time::Duration::from_secs(3);
-
         if mouse_button.pressed(MouseButton::Left) {
             if !cursor_moved_events.is_empty() {
                 last_update.update();
@@ -146,9 +140,8 @@ pub fn stroke_record_system(
                     .push(PointMeasurement::new_point(point));
                 region.rect = region.rect.union_point(point);
             }
-        } else {
-            let finished = stroke_group.active_stroke.take();
-            stroke_group.strokes.extend(finished);
+        } else if let Some(finished) = stroke_group.active_stroke.take() {
+            stroke_group.strokes.push(finished);
             last_update.update();
             debug!("creating_stroke finished");
         }
@@ -173,13 +166,14 @@ pub fn stroke_record_system(
 pub fn render_strokes_system(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    query: Query<(Entity, &StrokeGroup), (Without<Active>, Without<Rendered>)>,
+    q_inactive: Query<(Entity, &StrokeGroup), (Without<Active>, Without<Rendered>)>,
+    q_active: Query<(Entity, &StrokeGroup), With<Active>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    for (entity, stroke_group) in query.iter() {
+    let handle = materials.add(Color::PURPLE);
+    let mesh = Mesh::from(bevy::math::prelude::Rectangle::new(10.0, 10.0));
+    for (entity, stroke_group) in q_inactive.iter() {
         info!("rendering_stroke start");
-        let mesh = Mesh::from(bevy::math::prelude::Rectangle::new(10.0, 10.0));
-        let handle = materials.add(Color::PURPLE);
         for stroke in &stroke_group.strokes {
             for measurement in &stroke.measurements {
                 let mesh_handle = meshes.add(mesh.clone());
@@ -199,5 +193,25 @@ pub fn render_strokes_system(
         }
         commands.entity(entity).insert(Rendered);
         info!("rendering_stroke finished");
+    }
+    for (entity, stroke_group) in q_active.iter() {
+        commands.entity(entity).clear_children();
+        for stroke in &stroke_group.strokes {
+            for measurement in &stroke.measurements {
+                let mesh_handle = meshes.add(mesh.clone());
+                commands
+                    .spawn(ColorMesh2dBundle {
+                        mesh: mesh_handle.into(),
+                        material: handle.clone(),
+                        transform: Transform::from_translation(Vec3::new(
+                            measurement.point.x,
+                            measurement.point.y,
+                            2.0,
+                        )),
+                        ..Default::default()
+                    })
+                    .set_parent(entity);
+            }
+        }
     }
 }

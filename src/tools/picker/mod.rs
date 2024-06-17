@@ -18,7 +18,7 @@ impl Picker {
     }
 }
 
-fn pick_unit_system(
+pub fn pick_unit_system(
     // these will panic if the resources don't exist
     mut tool_box: ResMut<ToolBox>,
     mut mouse_input: Res<ButtonInput<MouseButton>>,

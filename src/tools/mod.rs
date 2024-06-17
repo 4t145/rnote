@@ -7,7 +7,8 @@ pub struct ToolPlugin;
 impl Plugin for ToolPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ToolBox>()
-            .add_systems(Update, switch_tool);
+            .add_systems(Update, switch_tool)
+            .add_systems(Update, picker::pick_unit_system);
     }
 }
 #[derive(Debug)]
@@ -65,7 +66,6 @@ impl ToolBox {
         self.tools.get_mut(self.current_tool_index)
     }
 }
-
 
 fn switch_tool(
     // these will panic if the resources don't exist
